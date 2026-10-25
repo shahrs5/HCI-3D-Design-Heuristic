@@ -1,20 +1,4 @@
 {
-  "auth": {
-    "providers": {
-      "anonymous": true,
-      "googleSignIn": {
-        "oAuthBrandDisplayName": "HCI Accessibility Audit",
-        "supportEmail": "shahrs55555@gmail.com",
-        "authorizedRedirectUris": [
-          "https://hci-a11y-audit-edc867.firebaseapp.com/__/auth/handler"
-        ]
-      }
-    }
-  },
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
   "hosting": {
     "public": "dist",
     "ignore": [
@@ -48,16 +32,5 @@
         ]
       }
     ]
-  },
-  "emulators": {
-    "auth": {
-      "port": 9099
-    },
-    "firestore": {
-      "port": 8080
-    },
-    "ui": {
-      "enabled": false
-    }
   }
 }
