@@ -205,7 +205,7 @@ export default function Wizard() {
   } else if (step === 0) {
     body = <SetupStep data={data} update={update} errors={errors} />;
   } else if (step < OUTSIDE) {
-    body = <HeuristicStep cat={checklist[step - FIRST_H]} data={data} setItem={setItem} errors={errors} />;
+    body = <HeuristicStep key={step} cat={checklist[step - FIRST_H]} data={data} setItem={setItem} errors={errors} />;
   } else if (step === OUTSIDE) {
     body = (
       <OutsideStep
