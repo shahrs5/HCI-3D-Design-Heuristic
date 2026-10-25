@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
   CONDITIONS, GROUPS, GUIDING_QUESTIONS, LIMITS, SEVERITY_LABELS, TAGS, VERIFICATION_ANSWERS,
-  checklist, isAnswered, type AuditData, type ItemAnswer, type OutsideIssue,
+  checklist, isAnswered, toStored, type AuditData, type ItemAnswer, type OutsideIssue,
 } from './types';
 import { clear, load, save } from './storage';
 import { db, ensureAnonymousUser, firebaseConfigured } from './firebase';
@@ -25,28 +25,6 @@ const REVIEW = VERIFY + 1;
 
 const domId = (s: string) => s.replace(/[^A-Za-z0-9_-]/g, '_');
 const newKey = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
-
-/** Payload stored in Firestore (must match firestore.rules). */
-function toPayload(d: AuditData, uid: string) {
-  const items: Record<string, ItemAnswer> = {};
-  for (const c of checklist)
-    for (const i of c.items) {
-      const a = d.items[i.id];
-      items[i.id] = { severity: a?.unclear ? null : a?.severity ?? null, unclear: !!a?.unclear, comment: a?.comment ?? '' };
-    }
-  return {
-    schemaVersion: 1,
-    uid,
-    auditor: d.auditor.trim(),
-    group: d.group,
-    condition: d.condition,
-    screenReader: d.screenReader.trim(),
-    items,
-    outside: d.outside.map((o) => ({ text: o.text.trim(), tag: o.tag, severity: o.severity })),
-    verification: { answer: d.verification.answer, reason: d.verification.reason.trim() },
-    submittedAt: serverTimestamp(),
-  };
-}
 
 function validate(step: number, d: AuditData): FieldError[] {
   const e: FieldError[] = [];
@@ -148,7 +126,7 @@ export default function Wizard() {
       const user = await ensureAnonymousUser();
       const ref = doc(collection(db(), 'sessions'));
       const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('The server did not respond within 20 seconds. Check your connection.')), 20000));
-      await Promise.race([setDoc(ref, toPayload(data, user.uid)), timeout]);
+      await Promise.race([setDoc(ref, { ...toStored(data, user.uid), submittedAt: serverTimestamp() }), timeout]);
       setSubmittedId(ref.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

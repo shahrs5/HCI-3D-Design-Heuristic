@@ -4,7 +4,7 @@ import { collection, getDocs, orderBy, query, type Timestamp } from 'firebase/fi
 import { ADMIN_EMAILS, auth, db, firebaseConfigured } from './firebase';
 import { useAnnounce } from './Announcer';
 import { download, itemsCsv, outsideCsv, type SessionRecord } from './csv';
-import type { AuditData } from './types';
+import { fromStored, type StoredSession } from './types';
 
 type Row = SessionRecord & { submittedAt: Date | null };
 
@@ -38,8 +38,8 @@ export default function Admin() {
     try {
       const snap = await getDocs(query(collection(db(), 'sessions'), orderBy('submittedAt', 'desc')));
       const r = snap.docs.map((d) => {
-        const v = d.data() as AuditData & { submittedAt?: Timestamp };
-        return { id: d.id, data: v, submittedAt: v.submittedAt ? v.submittedAt.toDate() : null };
+        const v = d.data() as StoredSession & { submittedAt?: Timestamp };
+        return { id: d.id, data: fromStored(v), submittedAt: v.submittedAt ? v.submittedAt.toDate() : null };
       });
       setRows(r);
       announce(`${r.length} sessions loaded.`);
