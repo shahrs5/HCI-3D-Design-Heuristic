@@ -1,0 +1,57 @@
+[
+  {
+    "id": "H1",
+    "heuristic": "H1",
+    "title": "Agent Interface",
+    "items": [
+      { "id": "H1.1", "text": "The agent's responses are exposed as text that the screen reader reads in full." },
+      { "id": "H1.2", "text": "The code editor, chat box and preview have meaningful labels." },
+      { "id": "H1.3", "text": "Any model preview or rendering has a text alternative describing what it shows." },
+      { "id": "H1.4", "text": "Status and errors are not conveyed only by colour, icons or visuals." }
+    ]
+  },
+  {
+    "id": "H2",
+    "heuristic": "H2",
+    "title": "Agent Operation",
+    "items": [
+      { "id": "H2.1", "text": "The user is told when the agent starts, is working and has finished." },
+      { "id": "H2.2", "text": "After each request, the agent states what changed in the model (which parts, which dimensions)." },
+      { "id": "H2.3", "text": "The user can review the sequence of edits made so far." },
+      { "id": "H2.4", "text": "The agent reports when it did something different from what was asked." }
+    ]
+  },
+  {
+    "id": "H3",
+    "heuristic": "H3",
+    "title": "User Operation",
+    "items": [
+      { "id": "H3.1", "text": "Every function (prompting, editing, rendering, exporting) works by keyboard alone." },
+      { "id": "H3.2", "text": "Navigation between chat, code and preview is consistent and predictable." },
+      { "id": "H3.3", "text": "Focus lands somewhere sensible after each response or render." },
+      { "id": "H3.4", "text": "The user can interrupt or cancel the agent mid-task." }
+    ]
+  },
+  {
+    "id": "H4",
+    "heuristic": "H4",
+    "title": "Help & Recovery",
+    "items": [
+      { "id": "H4.1", "text": "Errors in the code or the model are announced in an accessible form." },
+      { "id": "H4.2", "text": "The user can undo or revert a bad edit." },
+      { "id": "H4.3", "text": "The tool gives a non-visual way to check that the model matches the request, such as dimensions, a part list or a geometric description." },
+      { "id": "H4.4", "text": "Help and documentation are readable with a screen reader." }
+    ]
+  },
+  {
+    "id": "H5",
+    "heuristic": "H5",
+    "title": "Adaptability & Personalization",
+    "items": [
+      { "id": "H5.1", "text": "It works with the screen reader and browser the auditor uses." },
+      { "id": "H5.2", "text": "The user can control how much detail the agent gives when describing the model." },
+      { "id": "H5.3", "text": "Output can be inspected in more than one non-visual way (text, audio or tactile export)." },
+      { "id": "H5.4", "text": "Settings and preferences persist between sessions." }
+    ]
+  }
+]
