@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { fromStored, toStored, emptyAudit } from '../src/types';
+import { fromSession, toResponses, emptyAudit } from '../src/types';
 import { itemsCsv, outsideCsv } from '../src/csv';
 
 const data = {
@@ -11,11 +11,11 @@ const data = {
 };
 
 test('stored round trip and CSV structure', () => {
-  const stored = toStored(data, 'u1');
+  const stored = { ...data, ...toResponses(data) };
   expect(stored.answers['H1.1']).toBe('NA');
   expect(stored.answers['H1.2']).toBe(3);
   expect(Object.keys(stored.answers)).toHaveLength(20);
-  const back = fromStored(stored);
+  const back = fromSession(stored);
   expect(back.items['H1.2']).toEqual({ severity: 3, unclear: false, comment: 'Says "preview", =SUM(A1)' });
   expect(back.items['H1.1'].unclear).toBe(true);
 

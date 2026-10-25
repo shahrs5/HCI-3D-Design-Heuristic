@@ -1,37 +1,60 @@
-// Submits one session through the DEPLOYED site. Run with: E2E_URL=https://<site> npx playwright test e2e-live
+// End-to-end against the DEPLOYED site and the real database:
+//   npm run test:live
+// Creates a session with the Firebase CLI's owner credentials (as the console would), completes the
+// participant flow in the browser, checks the stored result, then deletes the session.
 import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+import checklist from '../src/checklist.json' with { type: 'json' };
 
 const url = process.env.E2E_URL;
 test.skip(!url, 'set E2E_URL to run against the deployed site');
 
-test('submit a session to the deployed app', async ({ page }) => {
-  await page.goto(url!);
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
-  await page.fill('#auditor', 'E2E-TEST');
-  await page.getByLabel('Sighted pilot (blindfolded)').check();
-  await page.getByLabel('B: OpenSCAD + Claude').check();
-  await page.fill('#screenReader', 'NVDA');
-  await page.getByRole('button', { name: 'Next' }).click();
-  for (let s = 0; s < 5; s++) {
-    const groups = await page.locator('fieldset').all();
-    for (const [i, g] of groups.entries()) await (i === 0 ? g.getByLabel('Unclear / N/A') : g.getByLabel(new RegExp(`^${i}:`))).check();
+const require = createRequire(import.meta.url);
+const project = JSON.parse(readFileSync('.firebaserc', 'utf8')).projects.default;
+const base = `https://firestore.googleapis.com/v1/projects/${project}/databases/(default)/documents/sessions`;
+async function token() {
+  const { configstore } = require('firebase-tools/lib/configstore.js');
+  const { getAccessToken } = require('firebase-tools/lib/auth.js');
+  return (await getAccessToken(configstore.get('tokens').refresh_token, [])).access_token as string;
+}
+const str = (v: string) => ({ stringValue: v });
+
+test('participant flow on the live site writes a valid submission', async ({ page }) => {
+  const tok = await token();
+  const code = 'E2E' + Array.from({ length: 3 }, () => 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 31)]).join('');
+  const H = { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' };
+  const create = await fetch(`${base}?documentId=${code}`, { method: 'POST', headers: H, body: JSON.stringify({ fields: {
+    schemaVersion: { integerValue: '3' }, auditor: str('E2E-TEST'), group: str('Sighted pilot (blindfolded)'), condition: str('B: OpenSCAD + Claude'),
+    screenReader: str('none'), task: str('Automated test task.'), status: str('created'), createdAt: { timestampValue: new Date().toISOString() }, createdBy: str('e2e'),
+  } }) });
+  expect(create.ok, await create.text()).toBe(true);
+  try {
+    await page.goto(`${url}/s/${code}`);
+    await expect(page.locator('main h1')).toHaveText('Your task', { timeout: 20000 });
+    await expect(page.locator('main')).toContainText('Automated test task.');
+    await page.getByRole('button', { name: 'Start the task' }).click();
+    await expect(page.locator('main h1')).toHaveText('Doing the task');
+    page.once('dialog', (d) => d.accept());
+    await page.getByRole('button', { name: 'I have finished the task' }).click();
+    await page.getByLabel('Correct', { exact: true }).check();
     await page.getByRole('button', { name: 'Next' }).click();
+    for (let s = 0; s < checklist.length; s++) {
+      await expect(page.locator('main h1')).toHaveText(`${checklist[s].heuristic} ${checklist[s].title}`);
+      for (const g of await page.locator('fieldset').all()) await g.getByLabel(/^2:/).check();
+      await page.getByRole('button', { name: 'Next' }).click();
+    }
+    await page.getByRole('button', { name: 'Next' }).click(); // no outside problems
+    await page.getByRole('button', { name: 'Submit' }).click();
+    await expect(page.locator('main h1')).toHaveText('Thank you, you are done', { timeout: 20000 });
+
+    const doc = await (await fetch(`${base}/${code}`, { headers: H })).json();
+    expect(doc.fields.status.stringValue).toBe('submitted');
+    expect(doc.fields.answers.mapValue.fields['H3.2'].integerValue).toBe('2');
+    expect(doc.fields.taskStartedAt.timestampValue).toBeTruthy();
+    expect(doc.fields.taskEndedAt.timestampValue).toBeTruthy();
+    expect(doc.fields.verificationAnswer.stringValue).toBe('Correct');
+  } finally {
+    await fetch(`${base}/${code}`, { method: 'DELETE', headers: H });
   }
-  await page.getByRole('button', { name: 'Add an issue' }).click();
-  await page.getByLabel('Description of issue 1').fill('E2E test issue');
-  await page.getByLabel('Tag for issue 1').selectOption('Tracking edits');
-  await page.getByRole('group', { name: 'Severity for issue 1' }).getByLabel(/^2:/).check();
-  await page.getByRole('button', { name: 'Next' }).click();
-  await page.getByLabel('Incorrect').check();
-  await page.getByRole('button', { name: 'Next' }).click();
-  await page.getByRole('button', { name: 'Submit' }).click();
-  await expect(page.locator('h1')).toHaveText('Session submitted', { timeout: 30000 });
-  await expect(page.locator('h1')).toBeFocused();
-  await expect(page.locator('#live-region')).toHaveText('Session submitted');
-  const id = await page.locator('.success strong').textContent();
-  console.log('SUBMITTED_SESSION_ID', id);
-  const res = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa', 'best-practice']).analyze();
-  expect(res.violations.map((v) => v.id)).toEqual([]);
 });

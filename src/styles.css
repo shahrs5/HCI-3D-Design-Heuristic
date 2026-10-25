@@ -104,3 +104,23 @@ tbody th { font-weight: 400; }
 @media (forced-colors: active) {
   .has-error, fieldset.has-error, .error-summary { border-color: CanvasText; }
 }
+
+/* ---- participant & console additions ---- */
+.wide-main { max-width: 64rem; }
+.task { border: 2px solid var(--border); border-radius: 6px; padding: 0.25rem 1rem 0.75rem; margin: 1rem 0; background: #f7f9fc; }
+.code-input { font-size: 1.5rem; letter-spacing: 0.15em; text-transform: uppercase; max-width: 12rem; }
+.console-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; margin: 0 0 1rem; color: var(--muted); }
+.panel { border: 2px solid var(--border); border-radius: 6px; padding: 0.25rem 1rem 1rem; margin: 1.25rem 0; scroll-margin-top: 1rem; }
+.code-big { font-size: 1.6rem; letter-spacing: 0.15em; }
+.status-big { font-size: 1.2rem; }
+.two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 0.25rem 1rem; }
+.jump ul { list-style: none; display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; padding: 0; }
+.notes-list li { border-bottom: 1px solid var(--border); padding: 0.25rem 0; }
+.measure-fields { display: flex; flex-wrap: wrap; gap: 0 1rem; }
+.measure-fields .field { flex: 1 1 10rem; }
+.new-session { border: 2px solid var(--border); border-radius: 6px; padding: 0.5rem 1rem; }
+.new-session summary { font-size: 1.2rem; }
+.table-wrap { overflow-x: auto; }
+button.small { min-height: 2.25rem; padding: 0.15rem 0.6rem; font-size: 0.95rem; }
+button.danger { border-color: var(--error); color: var(--error); }
+textarea { font: inherit; width: 100%; }

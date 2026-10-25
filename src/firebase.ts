@@ -1,5 +1,5 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, signInAnonymously, type Auth } from 'firebase/auth';
+import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInAnonymously, signInWithPopup, signOut, type Auth, type User } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 
 const env = import.meta.env;
@@ -35,3 +35,8 @@ export const ADMIN_EMAILS: string[] = (__ADMIN_EMAILS__ as string)
   .split(',')
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
+
+// Auth helpers used by the console (kept here so tests can swap this module for a fake).
+export const watchAuth = (cb: (u: User | null) => void) => onAuthStateChanged(auth(), cb);
+export const signInWithGoogle = () => signInWithPopup(auth(), new GoogleAuthProvider());
+export const signOutUser = () => signOut(auth());

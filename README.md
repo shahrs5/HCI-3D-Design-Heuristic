@@ -1,113 +1,93 @@
 # Accessibility heuristic audit app
 
-A data-collection tool for scoring AI-assisted 3D design tools (OpenSCAD + an LLM) against an
-adapted *Vibe Check* (W4A '26) heuristic framework. Auditors are blind/low-vision screen-reader
-users and blindfolded sighted pilots, so the app is screen-reader and keyboard first.
+The data-collection instrument for our study of AI-assisted 3D design tools (OpenSCAD + an LLM) with
+blind/low-vision (BLV) auditors, using our adaptation of the *Vibe Check* (W4A '26) heuristics.
 
-- Auditor app: https://hci-a11y-audit-edc867.web.app
-- Admin page: https://hci-a11y-audit-edc867.web.app/admin
-- Firebase project: `hci-a11y-audit-edc867` (Firestore in `asia-south1`, Hosting, Anonymous + Google Auth)
+The app has **two roles**, on **different pages**, linked by a **session code**:
 
-Stack: Vite + React + TypeScript, plain semantic HTML/CSS, Firebase (Firestore, Auth, Hosting).
+| Who | Page | What they do |
+|---|---|---|
+| **Participant** (the auditor) | https://hci-a11y-audit-edc867.web.app → type the code, or `/s/CODE` | On their own computer, with their screen reader and keyboard: read the task, **Start the task**, do it in their other window (ChatGPT or Claude plus the editor, nobody types for them), come back and choose **I have finished the task**, answer the verification question, rate the 20 items, add any problems outside the checklist, then submit. The app talks to them directly. |
+| **Operator** (you) | https://hci-a11y-audit-edc867.web.app/console | On your own laptop: create the session and give them the code, follow progress live, mark recording start/stop, take timestamped notes, paste the AI chat transcript, record measurements of the final model and your verdict, and export everything. |
+
+Your notes, transcript and measurements are stored in a separate operator-only document. The
+participant's browser can never read them.
+
+## Running a session
+
+1. Open **/console**, sign in with Google (admin list below).
+2. **New session**: auditor code (not a name), group, condition, screen reader, and the task text (remembered for next time). Create.
+3. The session page shows a 6-character **code** (e.g. `K7P4QX`) and a link. On the participant's computer, open
+   the site and type the code (or open the link). The code has no easily confused characters (no 0/O or 1/I).
+4. Watch **Progress**: joined, task started (server time), task finished, task time, submitted. The console announces each change.
+5. **Mark recording started/stopped** when you start or stop your recorder (OBS, a phone…).
+6. **Notes**: type and press Ctrl+Enter. Each note is stamped with the clock time and the time since the task started.
+7. After the task: paste the **AI chat transcript**, open the final model, and fill in **Final model**
+   (measurement rows with expected, measured, unit and match; your verdict; optionally the final OpenSCAD code and observations).
+8. When they submit, their answers appear under **Participant answers**.
+
+Other controls on the session page:
+- **Unlock for another browser:** if the participant has to switch computer or browser. A session is locked to the first browser that opens it, so nobody else can answer in their place.
+- **Edit session details:** the participant sees task text changes straight away, and the page announces them.
+- **Delete:** you type the code to confirm.
+
+## Data
+
+`sessions/{CODE}` (schemaVersion 3). Created by the operator; only the progress and answer fields can be written by the participant:
+
+| Field | Who writes it |
+|---|---|
+| `auditor`, `group`, `condition`, `screenReader`, `task`, `createdAt`, `createdBy` | operator |
+| `participantUid`, `joinedAt`, `taskStartedAt`, `taskEndedAt`, `submittedAt`, `status` | participant (timestamps are server time and can each be set only once) |
+| `answers` (item → 0–4 or `"NA"`), `comments`, `issueTexts` / `issueTags` / `issueSeverities`, `verificationAnswer`, `verificationReason` | participant, once, on submit |
+
+`status` goes `created → joined → in_task → task_done → submitted`.
+
+`sessions/{CODE}/private/operator` (operator only): `notes` [{at, text}], `marks` [{at, kind}],
+`transcript`, `measurements` [{what, expected, measured, unit, matches}], `verdict`, `finalCode`, `summary`.
+
+Two older test sessions from before the operator console (`RULES-TEST`, `E2E-TEST`) show as "Old format" in the
+console. Delete them there if you don't want them in the exports.
+
+## Exports (console → Sessions → Export all data)
+
+| File | Columns |
+|---|---|
+| Sessions CSV | session_id, auditor, group, condition, screen_reader, status, created_at, joined_at, task_started_at, task_ended_at, task_seconds, submitted_at, verification_answer, operator_verdict, recording_started_at, recording_stopped_at, notes_count, task |
+| Items CSV | session_id, auditor, group, condition, item_id, heuristic, severity, unclear, comment (submitted sessions) |
+| Outside-problems and verification CSV | session_id, auditor, group, condition, issue_text, tag, severity, verification_answer, verification_reason |
+| Notes CSV | session_id, auditor, time, seconds_since_task_start, note |
+| Measurements CSV | session_id, auditor, what, expected, measured, unit, matches, operator_verdict |
+| Everything (JSON) | all of the above plus transcripts and final code |
+
+Times are ISO 8601 (UTC). `severity` is empty when `unclear` is `true`.
 
 ## Run locally
 
 ```bash
 npm install
-cp .env.example .env      # then fill in the values (Firebase console > Project settings > Your apps)
-npm run dev               # http://localhost:5173  (admin: http://localhost:5173/admin)
+cp .env.example .env      # fill in from Firebase console > Project settings > Your apps
+npm run dev               # http://localhost:5173 (console at /console)
 ```
-
-In-progress answers are kept in `localStorage` (key `hci-a11y-audit-v1`), so a refresh never loses work.
-"Start new session" clears it after a confirmation dialog.
-
-## Deploy
-
-```bash
-npx firebase login        # once; on a headless machine: npx firebase login --no-localhost
-npm run deploy            # regenerates rules, builds, deploys hosting + Firestore rules
-```
-
-`firebase.json` also declares the auth providers (anonymous + Google). Deploy them with
-`npx firebase deploy --only auth` if you set up a new project.
 
 ## Edit the checklist
 
-All heuristic screens are rendered from `src/checklist.json`:
+All rating pages are rendered from `src/checklist.json` (`{ id, heuristic, title, items: [{ id, text }] }[]`).
+The Firestore rules check the exact item IDs, so after changing IDs run `npm run deploy` (it regenerates
+`firestore.rules`). Groups, conditions and tags live in `src/types.ts` and `scripts/gen-rules.mjs`, so change both.
 
-```json
-[{ "id": "H1", "heuristic": "H1", "title": "Agent Interface",
-   "items": [{ "id": "H1.1", "text": "..." }] }]
-```
+## Admin emails
 
-Add, remove or reword items there. The Firestore rules check the exact list of item IDs, so after
-changing IDs **redeploy** (`npm run deploy` regenerates `firestore.rules` from the checklist).
-Changing only the text needs no rules change, but redeploy the app.
-Other fixed options (groups, conditions, tags, severity labels) are in `src/types.ts`. If you change
-them, update the matching lists in `scripts/gen-rules.mjs`, too.
+`VITE_ADMIN_EMAILS=a@x.com,b@y.com` in `.env`. If it's empty, the Firebase CLI's account is used (currently
+shahrs55555@gmail.com). Then run `npm run deploy`: the list is built into both the app and the rules.
 
-## Configure admin emails
-
-Set a comma-separated list in `.env`:
-
-```
-VITE_ADMIN_EMAILS=alice@example.com,bob@example.com
-```
-
-If it is empty, the email of the account logged into the Firebase CLI is used (currently
-`shahrs55555@gmail.com`). The list is baked into both the app and `firestore.rules`, so after
-changing it run `npm run deploy`. Only these Google accounts (with verified emails) can read data.
-The Firestore rules enforce this, not just the UI.
-
-## Data
-
-Each submission is one document in the `sessions` collection (ID = the session ID shown to the
-auditor). Documents can be created by any signed-in user (auditors get anonymous auth) but never
-updated or deleted from the app. Shape (`schemaVersion: 2`):
-
-| field | value |
-|---|---|
-| `auditor`, `group`, `condition`, `screenReader` | session setup (no personal data) |
-| `answers` | `{ "H1.1": 0-4 or "NA", ... }` with every checklist item, `"NA"` = Unclear / N/A |
-| `comments` | `{ "H1.1": "text", ... }` (may be empty strings) |
-| `issueTexts`, `issueTags`, `issueSeverities` | parallel lists of outside-framework issues (max 30) |
-| `verificationAnswer`, `verificationReason` | verification question |
-| `uid`, `submittedAt` | anonymous user ID, server timestamp |
-
-The flat shape is deliberate: Firestore rules may evaluate at most 1000 expressions per request,
-and validating 20 nested item objects plus 30 nested issue objects exceeds that. Flat maps/lists can be
-validated with `keys()`, `values().hasOnly()` and `join()` at constant cost. Trade-off: the rules
-enforce *total* comment/issue-text size caps (20×1000 and 30×2000 characters), while per-field limits
-(1000/2000) are enforced by the app's `maxlength`. `join()` also coerces numbers, so a hand-crafted
-request could store a number as an issue text (harmless; exported as text).
-
-### CSV structure
-
-The admin page offers two combined downloads; the confirmation screen offers the same two files for
-a single session, plus JSON.
-
-**Items CSV**: one row per session × checklist item:
-
-`session_id, auditor, group, condition, item_id, heuristic, severity, unclear, comment`
-
-`severity` is 0–4, or empty when `unclear` is `true` (Unclear / N/A).
-
-**Outside-framework and verification CSV**: one row per outside-framework issue (one row with
-empty issue fields if the session has none), with the verification answer repeated on each row:
-
-`session_id, auditor, group, condition, issue_text, tag, severity, verification_answer, verification_reason`
-
-All cells are quoted; cells starting with `= + - @` are prefixed with `'` to stop spreadsheet formula injection.
-
-## Tests
+## Deploy and test
 
 ```bash
-npx playwright test                    # accessibility (axe + keyboard + focus + reflow) and CSV tests
-npm run test:rules                     # 38 Firestore rule cases via the Firebase Rules test API (no writes)
-npm run test:rules:live                # real anonymous user against the deployed project (writes 1 RULES-TEST doc)
-E2E_URL=https://hci-a11y-audit-edc867.web.app npx playwright test e2e-live   # submits 1 E2E-TEST session
+npm run deploy        # rules + hosting
+npm test              # UI tests: participant + console with an in-memory fake backend (never touches the database)
+npm run test:rules    # 39 security-rule cases on Google's Rules test API (no writes)
+npm run test:live     # one real participant run on the deployed site; creates and deletes a temporary session
 ```
 
-The Firestore emulator needs Java, which this machine doesn't have, so `test:rules` evaluates the local rules file
-on Google's Rules test API instead (you need to be logged into the Firebase CLI).
 See `ACCESSIBILITY.md` for what was and wasn't verified.

@@ -55,14 +55,8 @@ export function isAnswered(a: ItemAnswer | undefined) {
   return !!a && (a.unclear || a.severity !== null);
 }
 
-/** Shape of a document in the Firestore `sessions` collection (see scripts/gen-rules.mjs). */
-export interface StoredSession {
-  schemaVersion: 2;
-  uid: string;
-  auditor: string;
-  group: string;
-  condition: string;
-  screenReader: string;
+/** Participant answers as stored in Firestore (flat, so the security rules can validate them cheaply). */
+export interface Responses {
   answers: Record<string, number | 'NA'>;
   comments: Record<string, string>;
   issueTexts: string[];
@@ -72,7 +66,50 @@ export interface StoredSession {
   verificationReason: string;
 }
 
-export function toStored(d: AuditData, uid: string): StoredSession {
+export type SessionStatus = 'created' | 'joined' | 'in_task' | 'task_done' | 'submitted';
+export const STATUS_TEXT: Record<SessionStatus, string> = {
+  created: 'Waiting for the participant to open the link',
+  joined: 'Participant has the session open',
+  in_task: 'Participant is doing the task',
+  task_done: 'Task finished; participant is answering questions',
+  submitted: 'Submitted',
+};
+
+/** sessions/{code} (schemaVersion 3). Timestamps are Firestore Timestamps (or null). */
+export interface TS { toDate(): Date; toMillis(): number }
+export interface SessionDoc extends Partial<Responses> {
+  schemaVersion: number;
+  auditor: string;
+  group: string;
+  condition: string;
+  screenReader: string;
+  task: string;
+  status: SessionStatus;
+  createdAt?: TS | null;
+  createdBy?: string;
+  participantUid?: string | null;
+  joinedAt?: TS | null;
+  taskStartedAt?: TS | null;
+  taskEndedAt?: TS | null;
+  submittedAt?: TS | null;
+}
+
+export interface Note { at: number; text: string }
+export interface Mark { at: number; kind: 'recording_started' | 'recording_stopped' }
+export interface Measurement { key: string; what: string; expected: string; measured: string; unit: string; matches: '' | 'Yes' | 'Partly' | 'No' }
+/** sessions/{code}/private/operator: operator-only data, never shown to the participant. */
+export interface PrivateDoc {
+  notes: Note[];
+  marks: Mark[];
+  transcript: string;
+  measurements: Measurement[];
+  verdict: '' | 'Correct' | 'Partly correct' | 'Incorrect';
+  finalCode: string;
+  summary: string;
+}
+export const emptyPrivate = (): PrivateDoc => ({ notes: [], marks: [], transcript: '', measurements: [], verdict: '', finalCode: '', summary: '' });
+
+export function toResponses(d: AuditData): Responses {
   const answers: Record<string, number | 'NA'> = {};
   const comments: Record<string, string> = {};
   for (const i of allItems) {
@@ -81,12 +118,6 @@ export function toStored(d: AuditData, uid: string): StoredSession {
     comments[i.id] = (a?.comment ?? '').trim();
   }
   return {
-    schemaVersion: 2,
-    uid,
-    auditor: d.auditor.trim(),
-    group: d.group,
-    condition: d.condition,
-    screenReader: d.screenReader.trim(),
     answers,
     comments,
     issueTexts: d.outside.map((o) => o.text.trim()),
@@ -97,19 +128,33 @@ export function toStored(d: AuditData, uid: string): StoredSession {
   };
 }
 
-export function fromStored(s: StoredSession): AuditData {
+/** Rebuilds form data from a stored session (works for v2 and v3 documents). */
+export function fromSession(s: Partial<SessionDoc>): AuditData {
   const items: Record<string, ItemAnswer> = {};
   for (const i of allItems) {
     const v = s.answers?.[i.id];
     items[i.id] = { severity: typeof v === 'number' ? v : null, unclear: v === 'NA', comment: s.comments?.[i.id] ?? '' };
   }
   return {
-    auditor: s.auditor,
-    group: s.group,
-    condition: s.condition,
-    screenReader: s.screenReader,
+    auditor: s.auditor ?? '',
+    group: s.group ?? '',
+    condition: s.condition ?? '',
+    screenReader: s.screenReader ?? '',
     items,
     outside: (s.issueTexts ?? []).map((text, n) => ({ key: String(n), text, tag: s.issueTags?.[n] ?? '', severity: s.issueSeverities?.[n] ?? null })),
     verification: { answer: s.verificationAnswer ?? '', reason: s.verificationReason ?? '' },
   };
+}
+
+export function fmtTime(ts?: TS | null | number): string {
+  if (ts === null || ts === undefined) return '';
+  const d = typeof ts === 'number' ? new Date(ts) : ts.toDate();
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+export function fmtDuration(ms: number): string {
+  if (!(ms >= 0)) return '';
+  const s = Math.round(ms / 1000);
+  const m = Math.floor(s / 60);
+  return m ? `${m} min ${s % 60} s` : `${s} s`;
 }

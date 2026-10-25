@@ -14,65 +14,72 @@ const src = readFileSync('firestore.rules', 'utf8');
 const checklist = JSON.parse(readFileSync('src/checklist.json', 'utf8'));
 const admin = (src.match(/in \["([^"]+)"/) ?? [])[1] ?? 'admin@example.com';
 const time = '2026-01-01T12:00:00Z';
-const path = '/databases/(default)/documents/sessions/s1';
 
 const ids = checklist.flatMap((c) => c.items.map((i) => i.id));
 const answers = Object.fromEntries(ids.map((id, n) => [id, n % 4 === 0 ? 'NA' : n % 5]));
 const comments = Object.fromEntries(ids.map((id) => [id, 'c'.repeat(1000)]));
-const valid = (patch = {}) => ({
-  schemaVersion: 2, uid: 'anon1', auditor: 'P1', group: 'BLV screen-reader user', condition: 'B: OpenSCAD + Claude',
-  screenReader: 'NVDA', answers: { ...answers }, comments: { ...comments },
-  issueTexts: ['x'.repeat(2000)], issueTags: ['Tracking edits'], issueSeverities: [4],
-  verificationAnswer: 'Could not tell', verificationReason: 'r', submittedAt: time, ...patch,
-});
-const issues = (n) => ({ issueTexts: Array(n).fill('x'.repeat(2000)), issueTags: Array(n).fill('Other'), issueSeverities: Array(n).fill(0) });
-const anon = { uid: 'anon1', token: { firebase: { sign_in_provider: 'anonymous' } } };
+const T0 = '2026-01-01T10:00:00Z';
+const path = '/databases/(default)/documents/sessions/K7P4QX';
+const privPath = path + '/private/operator';
+
+const anon = { uid: 'u1', token: { firebase: { sign_in_provider: 'anonymous' } } };
+const anon2 = { uid: 'u2', token: { firebase: { sign_in_provider: 'anonymous' } } };
 const adminAuth = { uid: 'adm', token: { email: admin, email_verified: true, firebase: { sign_in_provider: 'google.com' } } };
 const other = { uid: 'x', token: { email: 'someone@example.com', email_verified: true, firebase: { sign_in_provider: 'google.com' } } };
-const existing = { data: valid() };
-const without = (k) => { const d = valid(); delete d[k]; return d; };
-const create = (data) => ({ auth: anon, method: 'create', data });
+
+const created = { schemaVersion: 3, auditor: 'P1', group: 'BLV screen-reader user', condition: 'B: OpenSCAD + Claude', screenReader: 'NVDA', task: 'Make a 40 by 30 by 10 mm box with a 5 mm hole.', status: 'created', createdAt: T0, createdBy: admin };
+const newSession = { ...created, createdAt: time };
+const joined = { ...created, participantUid: 'u1', status: 'joined', joinedAt: T0 };
+const inTask = { ...joined, status: 'in_task', taskStartedAt: T0 };
+const taskDone = { ...inTask, status: 'task_done', taskEndedAt: T0 };
+const responses = {
+  answers: { ...answers }, comments: { ...comments },
+  issueTexts: ['x'.repeat(2000)], issueTags: ['Tracking edits'], issueSeverities: [4],
+  verificationAnswer: 'Could not tell', verificationReason: 'r',
+};
+const submitted = { ...taskDone, ...responses, status: 'submitted', submittedAt: T0 };
+const upd = (auth, existing, data) => ({ auth, method: 'update', existing: { data: existing }, data });
 
 const cases = [
-  ['anonymous creates a valid session', 'ALLOW', create(valid())],
-  ['anonymous creates with no outside issues', 'ALLOW', create(valid(issues(0)))],
-  ['anonymous creates with 30 outside issues (max)', 'ALLOW', create(valid(issues(30)))],
-  ['reject 31 outside issues', 'DENY', create(valid(issues(31)))],
-  ['unauthenticated create', 'DENY', { auth: null, method: 'create', data: valid() }],
-  ['anonymous get', 'DENY', { auth: anon, method: 'get', existing }],
-  ['anonymous list', 'DENY', { auth: anon, method: 'list', existing }],
-  ['anonymous update', 'DENY', { auth: anon, method: 'update', existing, data: valid({ auditor: 'P2' }) }],
-  ['anonymous delete', 'DENY', { auth: anon, method: 'delete', existing }],
-  ['non-admin Google user get', 'DENY', { auth: other, method: 'get', existing }],
-  ['admin get', 'ALLOW', { auth: adminAuth, method: 'get', existing }],
-  ['admin list', 'ALLOW', { auth: adminAuth, method: 'list', existing }],
-  ['admin update', 'DENY', { auth: adminAuth, method: 'update', existing, data: valid({ auditor: 'P2' }) }],
-  ['admin delete', 'DENY', { auth: adminAuth, method: 'delete', existing }],
-  ['admin email unverified', 'DENY', { auth: { ...adminAuth, token: { ...adminAuth.token, email_verified: false } }, method: 'get', existing }],
-  ['reject extra field (e.g. name)', 'DENY', create(valid({ name: 'Jane' }))],
-  ['reject missing field', 'DENY', create(without('screenReader'))],
-  ['reject spoofed uid', 'DENY', create(valid({ uid: 'other' }))],
-  ['reject client-chosen timestamp', 'DENY', create(valid({ submittedAt: '2020-01-01T00:00:00Z' }))],
-  ['reject unknown group', 'DENY', create(valid({ group: 'Other' }))],
-  ['reject unknown condition', 'DENY', create(valid({ condition: 'C' }))],
-  ['reject empty auditor', 'DENY', create(valid({ auditor: '' }))],
-  ['reject auditor over 40 chars', 'DENY', create(valid({ auditor: 'x'.repeat(41) }))],
-  ['reject screen reader over 100 chars', 'DENY', create(valid({ screenReader: 'x'.repeat(101) }))],
-  ['reject severity 5', 'DENY', create(valid({ answers: { ...answers, 'H2.1': 5 } }))],
-  ['reject unanswered item (null)', 'DENY', create(valid({ answers: { ...answers, 'H2.1': null } }))],
-  ['reject missing item', 'DENY', create(valid({ answers: Object.fromEntries(Object.entries(answers).slice(1)) }))],
-  ['reject unknown item id', 'DENY', create(valid({ answers: { ...Object.fromEntries(Object.entries(answers).slice(1)), 'H9.9': 1 } }))],
-  ['reject non-string comment', 'DENY', create(valid({ comments: { ...comments, 'H2.1': ['a'] } }))],
-  ['reject comments over total cap', 'DENY', create(valid({ comments: { ...comments, 'H2.1': 'x'.repeat(1001) } }))],
-  ['reject bad issue tag', 'DENY', create(valid({ issueTags: ['Nope'] }))],
-  ['reject empty issue text', 'DENY', create(valid({ issueTexts: [''] }))],
-  // Known limitation: join() coerces numbers, so a numeric issue text is not rejected (harmless).
-  ['reject issue texts over total cap', 'DENY', create(valid({ ...issues(30), issueTexts: Array(30).fill('x'.repeat(2001)) }))],
-  ['reject issue severity null', 'DENY', create(valid({ issueSeverities: [null] }))],
-  ['reject mismatched issue lists', 'DENY', create(valid({ issueTags: [] }))],
-  ['reject bad verification answer', 'DENY', create(valid({ verificationAnswer: 'Yes' }))],
-  ['reject verification reason over 2000', 'DENY', create(valid({ verificationReason: 'x'.repeat(2001) }))],
-  ['reject write to another collection', 'DENY', { auth: anon, method: 'create', data: { a: 1 }, path: '/databases/(default)/documents/other/x' }],
+  ['operator creates a session', 'ALLOW', { auth: adminAuth, method: 'create', data: newSession }],
+  ['anonymous cannot create a session', 'DENY', { auth: anon, method: 'create', data: newSession }],
+  ['other Google user cannot create', 'DENY', { auth: other, method: 'create', data: newSession }],
+  ['create rejects extra field', 'DENY', { auth: adminAuth, method: 'create', data: { ...newSession, name: 'Jane' } }],
+  ['create rejects unknown group', 'DENY', { auth: adminAuth, method: 'create', data: { ...newSession, group: 'X' } }],
+  ['create rejects client timestamp', 'DENY', { auth: adminAuth, method: 'create', data: { ...newSession, createdAt: '2020-01-01T00:00:00Z' } }],
+  ['participant can read a session with its code', 'ALLOW', { auth: anon, method: 'get', existing: { data: created } }],
+  ['signed-out user cannot read', 'DENY', { auth: null, method: 'get', existing: { data: created } }],
+  ['participant cannot list sessions', 'DENY', { auth: anon, method: 'list', existing: { data: created } }],
+  ['operator lists sessions', 'ALLOW', { auth: adminAuth, method: 'list', existing: { data: created } }],
+  ['participant joins', 'ALLOW', upd(anon, created, { ...joined, joinedAt: time })],
+  ['second device cannot take over a joined session', 'DENY', upd(anon2, joined, { ...joined, participantUid: 'u2' })],
+  ['participant starts the task', 'ALLOW', upd(anon, joined, { ...inTask, taskStartedAt: time })],
+  ['start time must be server time', 'DENY', upd(anon, joined, { ...inTask, taskStartedAt: '2020-01-01T00:00:00Z' })],
+  ['cannot re-start the task', 'DENY', upd(anon, inTask, { ...inTask, taskStartedAt: time })],
+  ['cannot be in_task without a start time', 'DENY', upd(anon, joined, { ...joined, status: 'in_task' })],
+  ['participant finishes the task', 'ALLOW', upd(anon, inTask, { ...taskDone, taskEndedAt: time })],
+  ['participant cannot change operator fields', 'DENY', upd(anon, inTask, { ...inTask, auditor: 'P9' })],
+  ['participant cannot change the task text', 'DENY', upd(anon, inTask, { ...inTask, task: 'easier task' })],
+  ['answers cannot be written before submitting', 'DENY', upd(anon, taskDone, { ...taskDone, ...responses })],
+  ['participant submits', 'ALLOW', upd(anon, taskDone, { ...submitted, submittedAt: time })],
+  ['submit with 30 issues (max)', 'ALLOW', upd(anon, taskDone, { ...submitted, submittedAt: time, issueTexts: Array(30).fill('x'), issueTags: Array(30).fill('Other'), issueSeverities: Array(30).fill(0) })],
+  ['submit rejects 31 issues', 'DENY', upd(anon, taskDone, { ...submitted, submittedAt: time, issueTexts: Array(31).fill('x'), issueTags: Array(31).fill('Other'), issueSeverities: Array(31).fill(0) })],
+  ['cannot submit before finishing the task', 'DENY', upd(anon, inTask, { ...inTask, ...responses, status: 'submitted', submittedAt: time })],
+  ['submit rejects severity 5', 'DENY', upd(anon, taskDone, { ...submitted, submittedAt: time, answers: { ...answers, 'H2.1': 5 } })],
+  ['submit rejects missing item', 'DENY', upd(anon, taskDone, { ...submitted, submittedAt: time, answers: Object.fromEntries(Object.entries(answers).slice(1)) })],
+  ['submit rejects bad tag', 'DENY', upd(anon, taskDone, { ...submitted, submittedAt: time, issueTags: ['Nope'] })],
+  ['submit rejects bad verification answer', 'DENY', upd(anon, taskDone, { ...submitted, submittedAt: time, verificationAnswer: 'Yes' })],
+  ['submit rejects oversize comments', 'DENY', upd(anon, taskDone, { ...submitted, submittedAt: time, comments: { ...comments, 'H2.1': 'x'.repeat(1001) } })],
+  ['no changes after submitting', 'DENY', upd(anon, submitted, { ...submitted, verificationAnswer: 'Correct' })],
+  ['participant cannot delete', 'DENY', { auth: anon, method: 'delete', existing: { data: created } }],
+  ['operator can edit a session (e.g. unlock device)', 'ALLOW', upd(adminAuth, joined, { ...joined, participantUid: null, status: 'created' })],
+  ['operator can delete a session', 'ALLOW', { auth: adminAuth, method: 'delete', existing: { data: created } }],
+  ['participant cannot read operator notes', 'DENY', { auth: anon, method: 'get', path: privPath, existing: { data: { notes: [] } } }],
+  ['participant cannot write operator notes', 'DENY', { auth: anon, method: 'create', path: privPath, data: { notes: [] } }],
+  ['operator reads notes', 'ALLOW', { auth: adminAuth, method: 'get', path: privPath, existing: { data: { notes: [] } } }],
+  ['operator writes notes', 'ALLOW', { auth: adminAuth, method: 'update', path: privPath, existing: { data: { notes: [] } }, data: { notes: [{ at: 1, text: 'n' }] } }],
+  ['legacy (v2) documents are read-only for participants', 'DENY', upd(anon, { schemaVersion: 2, status: 'x' }, { schemaVersion: 2, status: 'joined', participantUid: 'u1', joinedAt: time })],
+  ['other collections are closed', 'DENY', { auth: anon, method: 'create', data: { a: 1 }, path: '/databases/(default)/documents/other/x' }],
 ];
 
 const testCases = cases.map(([, expectation, c]) => ({
