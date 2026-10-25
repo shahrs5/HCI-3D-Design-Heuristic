@@ -1,8 +1,8 @@
 # 3D Design Agent (accessible demo)
 
 A demo of a conversational 3D design tool for blind and low-vision (BLV) makers, built to follow the
-accessibility heuristics of our project (adapted from *Vibe Check*, W4A '26). It pairs with the audit app in
-`../HCI`, so auditors can score it as a reference tool.
+accessibility heuristics of our project (adapted from *Vibe Check*, W4A '26). It pairs with the evaluation app in
+[`../evaluation-app`](../evaluation-app), so auditors can score it as a reference tool.
 
 **Live:** https://hci-3d-design-demo.web.app
 
@@ -41,7 +41,7 @@ BASE_URL=https://hci-3d-design-demo.web.app npx playwright test a11y voice   # a
 
 ## Deploy
 
-Hosted as a second site (`hci-3d-design-demo`) in the same Firebase project as the audit app:
+Hosted as a second site (`hci-3d-design-demo`) in the same Firebase project as the evaluation app:
 
 ```bash
 npm run build && npx firebase deploy --only hosting
