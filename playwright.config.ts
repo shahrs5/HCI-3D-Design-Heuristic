@@ -1,12 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// UI tests run against the Vite dev server with src/firebase.ts and src/session.ts swapped for
-// in-memory fakes (tests/fakes), so they never touch the real database.
-// tests/e2e-live.spec.ts runs against the deployed site when E2E_URL is set.
 export default defineConfig({
   testDir: 'tests',
   timeout: 120_000,
   reporter: [['list']],
-  use: { baseURL: 'http://localhost:5179', ...devices['Desktop Chrome'] },
-  webServer: { command: 'npx vite --port 5179 --strictPort', url: 'http://localhost:5179', reuseExistingServer: true },
+  use: { baseURL: process.env.BASE_URL ?? 'http://localhost:4173', ...devices['Desktop Chrome'] },
+  webServer: process.env.BASE_URL ? undefined : { command: 'npm run build && npx vite preview --port 4173 --strictPort', url: 'http://localhost:4173', reuseExistingServer: true, timeout: 180_000 },
 });

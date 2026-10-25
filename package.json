@@ -5,14 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "rules": "node scripts/gen-rules.mjs",
-    "build": "npm run rules && tsc -b && vite build",
+    "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview --port 4173",
     "test": "playwright test",
-    "test:rules": "npm run rules && node scripts/test-rules.mjs",
-    "test:live": "E2E_URL=https://hci-a11y-audit-edc867.web.app playwright test e2e-live",
-    "deploy": "npm run build && firebase deploy --only hosting,firestore"
+    "deploy": "npm run build && firebase deploy --only hosting"
   },
   "dependencies": {
     "firebase": "^13.1.0",

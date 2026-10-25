@@ -1,93 +1,49 @@
-# Accessibility heuristic audit app
+# Rate the 3D design tool (voice-first evaluation)
 
-The data-collection instrument for our study of AI-assisted 3D design tools (OpenSCAD + an LLM) with
-blind/low-vision (BLV) auditors, using our adaptation of the *Vibe Check* (W4A '26) heuristics.
+**Live:** https://hci-a11y-audit-edc867.web.app
 
-The app has **two roles**, on **different pages**, linked by a **session code**:
+A simple page for blind and low-vision participants to rate the AI-assisted 3D design tool they just
+used. It works out of the box: no accounts, no codes, no admin page.
 
-| Who | Page | What they do |
-|---|---|---|
-| **Participant** (the auditor) | https://hci-a11y-audit-edc867.web.app → type the code, or `/s/CODE` | On their own computer, with their screen reader and keyboard: read the task, **Start the task**, do it in their other window (ChatGPT or Claude plus the editor, nobody types for them), come back and choose **I have finished the task**, answer the verification question, rate the 20 items, add any problems outside the checklist, then submit. The app talks to them directly. |
-| **Operator** (you) | https://hci-a11y-audit-edc867.web.app/console | On your own laptop: create the session and give them the code, follow progress live, mark recording start/stop, take timestamped notes, paste the AI chat transcript, record measurements of the final model and your verdict, and export everything. |
+## How it works
 
-Your notes, transcript and measurements are stored in a separate operator-only document. The
-participant's browser can never read them.
+1. (Optional, researcher) Open **"For the researcher"** at the bottom of the page. Enter the participant code and choose the tool they used. These are remembered on this computer.
+2. The participant presses one of two big buttons:
+   - **"Start: the page talks and listens"**: the page reads everything aloud and they answer out loud after a beep.
+   - **"Start with my screen reader and keyboard"**: their screen reader reads each question, and they type the answer and press Enter.
+3. The page says what they're evaluating ("You just used OpenSCAD with Claude…") and explains the 0–4 scale.
+   It then reads the 20 statements one at a time and asks **"What would you rate it, 0 to 4?"**
+   - **Answers it understands:** a number ("three"), a word ("major", "no problem", "catastrophe"), or "not sure". Common mishearings like "for" (4) and "to" (2) also work.
+   - **After a rating of 2 or worse,** it asks "Would you like to say why?" and records what they say.
+   - **Anytime commands:** "repeat", "explain", "go back", "slower", "faster", "pause" (or press Escape).
+   - **Typed shortcuts:** 0–4, n (not sure), r (repeat), e (explain), b (back).
+4. Last questions: "Did the final model match what you asked for?" (yes, no or not sure), "How did you decide?", and
+   "Any other problem we didn't ask about?" (each with a 0–4 rating).
+5. "Thank you, please tell the researcher you have finished."
 
-## Running a session
+If the microphone is blocked or there's no internet (browser speech recognition needs it), the page says so and
+switches to typed answers. Progress is saved after every answer, so a reload offers "Continue where it stopped".
 
-1. Open **/console**, sign in with Google (admin list below).
-2. **New session**: auditor code (not a name), group, condition, screen reader, and the task text (remembered for next time). Create.
-3. The session page shows a 6-character **code** (e.g. `K7P4QX`) and a link. On the participant's computer, open
-   the site and type the code (or open the link). The code has no easily confused characters (no 0/O or 1/I).
-4. Watch **Progress**: joined, task started (server time), task finished, task time, submitted. The console announces each change.
-5. **Mark recording started/stopped** when you start or stop your recorder (OBS, a phone…).
-6. **Notes**: type and press Ctrl+Enter. Each note is stamped with the clock time and the time since the task started.
-7. After the task: paste the **AI chat transcript**, open the final model, and fill in **Final model**
-   (measurement rows with expected, measured, unit and match; your verdict; optionally the final OpenSCAD code and observations).
-8. When they submit, their answers appear under **Participant answers**.
+## Getting the results
 
-Other controls on the session page:
-- **Unlock for another browser:** if the participant has to switch computer or browser. A session is locked to the first browser that opens it, so nobody else can answer in their place.
-- **Edit session details:** the participant sees task text changes straight away, and the page announces them.
-- **Delete:** you type the code to confirm.
+Results are saved **in the browser on the computer used**. Open "For the researcher" (on the start or finish page):
+- **Download ratings (CSV):** session_id, auditor, group, condition, item_id, heuristic, severity, unclear, comment
+- **Download verification and other problems (CSV):** session_id, auditor, group, condition, issue_text, tag, severity, verification_answer, verification_reason
+- **Download everything (JSON)**
 
-## Data
+Download after each session: clearing the browser's data deletes the results.
 
-`sessions/{CODE}` (schemaVersion 3). Created by the operator; only the progress and answer fields can be written by the participant:
+Voice answers work in **Chrome, Edge and Safari** (not Firefox). Use headphones so the microphone doesn't pick up the screen reader.
 
-| Field | Who writes it |
-|---|---|
-| `auditor`, `group`, `condition`, `screenReader`, `task`, `createdAt`, `createdBy` | operator |
-| `participantUid`, `joinedAt`, `taskStartedAt`, `taskEndedAt`, `submittedAt`, `status` | participant (timestamps are server time and can each be set only once) |
-| `answers` (item → 0–4 or `"NA"`), `comments`, `issueTexts` / `issueTags` / `issueSeverities`, `verificationAnswer`, `verificationReason` | participant, once, on submit |
+## Change the statements
 
-`status` goes `created → joined → in_task → task_done → submitted`.
+Edit `src/checklist.json` (`{ id, heuristic, title, items: [{ id, text }] }[]`), then `npm run deploy`.
 
-`sessions/{CODE}/private/operator` (operator only): `notes` [{at, text}], `marks` [{at, kind}],
-`transcript`, `measurements` [{what, expected, measured, unit, matches}], `verdict`, `finalCode`, `summary`.
-
-Two older test sessions from before the operator console (`RULES-TEST`, `E2E-TEST`) show as "Old format" in the
-console. Delete them there if you don't want them in the exports.
-
-## Exports (console → Sessions → Export all data)
-
-| File | Columns |
-|---|---|
-| Sessions CSV | session_id, auditor, group, condition, screen_reader, status, created_at, joined_at, task_started_at, task_ended_at, task_seconds, submitted_at, verification_answer, operator_verdict, recording_started_at, recording_stopped_at, notes_count, task |
-| Items CSV | session_id, auditor, group, condition, item_id, heuristic, severity, unclear, comment (submitted sessions) |
-| Outside-problems and verification CSV | session_id, auditor, group, condition, issue_text, tag, severity, verification_answer, verification_reason |
-| Notes CSV | session_id, auditor, time, seconds_since_task_start, note |
-| Measurements CSV | session_id, auditor, what, expected, measured, unit, matches, operator_verdict |
-| Everything (JSON) | all of the above plus transcripts and final code |
-
-Times are ISO 8601 (UTC). `severity` is empty when `unclear` is `true`.
-
-## Run locally
+## Develop
 
 ```bash
 npm install
-cp .env.example .env      # fill in from Firebase console > Project settings > Your apps
-npm run dev               # http://localhost:5173 (console at /console)
+npm run dev        # http://localhost:5173
+npm test           # answer-understanding tests + full voice run (simulated voice) + keyboard run + axe
+npm run deploy     # build and publish to Firebase Hosting
 ```
-
-## Edit the checklist
-
-All rating pages are rendered from `src/checklist.json` (`{ id, heuristic, title, items: [{ id, text }] }[]`).
-The Firestore rules check the exact item IDs, so after changing IDs run `npm run deploy` (it regenerates
-`firestore.rules`). Groups, conditions and tags live in `src/types.ts` and `scripts/gen-rules.mjs`, so change both.
-
-## Admin emails
-
-`VITE_ADMIN_EMAILS=a@x.com,b@y.com` in `.env`. If it's empty, the Firebase CLI's account is used (currently
-shahrs55555@gmail.com). Then run `npm run deploy`: the list is built into both the app and the rules.
-
-## Deploy and test
-
-```bash
-npm run deploy        # rules + hosting
-npm test              # UI tests: participant + console with an in-memory fake backend (never touches the database)
-npm run test:rules    # 39 security-rule cases on Google's Rules test API (no writes)
-npm run test:live     # one real participant run on the deployed site; creates and deletes a temporary session
-```
-
-See `ACCESSIBILITY.md` for what was and wasn't verified.
