@@ -35,7 +35,7 @@ function download(name: string, data: BlobPart, type: string) {
 export function spokenText(m: Pick<Msg, 'text' | 'kind' | 'notes' | 'warnings' | 'details' | 'examples'>, detail: Settings['detail']): string {
   const parts: string[] = [];
   let text = m.text;
-  if (detail === 'brief' && m.kind === 'change') text = text.replace(/\s*Overall size (?:is now|is unchanged|:)[\s\S]*$/, '');
+  if (detail === 'brief' && m.kind === 'change') text = text.replace(/\s*Overall size(?: is now| is unchanged|:)[\s\S]*$/, '');
   parts.push(m.kind === 'error' ? `Problem: ${text}` : text);
   for (const n of m.notes ?? []) parts.push(`Note: ${n}`);
   for (const w of m.warnings ?? []) parts.push(`Warning: ${w}`);
@@ -367,6 +367,7 @@ export default function App() {
       </header>
 
       <main>
+        <div className="top-grid">
         <div className="col col-left">
           <section id="conversation" aria-labelledby="conversation-title" className="panel">
             <SectionHeading id="conversation-title">Conversation</SectionHeading>
@@ -471,6 +472,7 @@ export default function App() {
             <SectionHeading id="outputs-title">Other outputs</SectionHeading>
             <OutputsPanel empty={empty} onListen={() => send('listen to the shape', 'button')} onSTL={() => send('export stl', 'button')} onText={() => send('download the description', 'button')} onScad={() => send('download the code', 'button')} />
           </section>
+        </div>
         </div>
 
         <section id="settings" aria-labelledby="settings-title" className="panel wide">

@@ -39,7 +39,7 @@ export function ModelPanel({ model }: { model: Model }) {
               ))}
             </ul>
           )}
-          <div className="table-wrap">
+          <div className="table-wrap" role="region" aria-label="Parts table" tabIndex={0}>
             <table>
               <caption>Parts{H.length ? ' and holes' : ''} (sizes in millimetres)</caption>
               <thead>
@@ -218,7 +218,7 @@ export function HelpPanel({ onTry }: { onTry: (cmd: string) => void }) {
         </ul>
       </nav>
       {HELP.map((h) => (
-        <section key={h.id} aria-labelledby={`help-${h.id}`}>
+        <div key={h.id} className="help-topic">
           <h3 id={`help-${h.id}`} tabIndex={-1}>{h.title}</h3>
           {h.text.map((t, i) => <p key={i}>{t}</p>)}
           {h.examples.length > 0 && (
@@ -234,9 +234,9 @@ export function HelpPanel({ onTry }: { onTry: (cmd: string) => void }) {
               </ul>
             </>
           )}
-        </section>
+        </div>
       ))}
-      <section aria-labelledby="help-examples">
+      <div className="help-topic">
         <h3 id="help-examples" tabIndex={-1}>Example models</h3>
         <ul>
           {EXAMPLES.map((e) => (
@@ -246,7 +246,7 @@ export function HelpPanel({ onTry }: { onTry: (cmd: string) => void }) {
             </li>
           ))}
         </ul>
-      </section>
+      </div>
     </>
   );
 }

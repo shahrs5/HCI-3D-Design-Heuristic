@@ -102,10 +102,12 @@ code { font-family: ui-monospace, Consolas, 'Courier New', monospace; background
 .jump a { display: inline-block; padding: 0.15rem 0; font-weight: 600; }
 
 main { max-width: 96rem; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+.top-grid { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); min-width: 0; }
 @media (min-width: 70rem) {
-  main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .top-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+}
+@media (min-width: 70rem) and (min-height: 40rem) {
   .col-left { position: sticky; top: 7.5rem; }
-  .wide { grid-column: 1 / -1; }
 }
 .col { display: grid; gap: 1rem; min-width: 0; }
 .panel { background: var(--panel); border: 2px solid var(--border); border-radius: 8px; padding: 1rem; min-width: 0; scroll-margin-top: 8rem; }
