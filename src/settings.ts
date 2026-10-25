@@ -5,7 +5,7 @@ export interface Settings {
   focusAfterReply: 'input' | 'reply';
   speakReplies: boolean;
   soundCues: boolean;
-  pace: 'realistic' | 'instant';
+  pace: 'slow' | 'realistic' | 'instant';
   autoSendVoice: boolean;
   textSize: 100 | 125 | 150 | 200;
   theme: 'system' | 'light' | 'dark' | 'contrast';

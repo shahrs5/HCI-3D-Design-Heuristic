@@ -83,7 +83,7 @@ export const HELP: HelpTopic[] = [
     id: 'undo', title: 'Undo, history and stopping', keywords: ['undo', 'redo', 'history', 'back', 'revert', 'stop', 'cancel', 'mistake'],
     text: [
       'Every change is a step in the edit history. Undo and redo move one step; you can also go back to any step. Going back does not delete later steps until you make a new change.',
-      'While the agent is working, press Escape, the Stop button, or say "stop". Nothing is changed when you stop.',
+      'While the agent is working, press Escape, the Stop button, or say "stop". Nothing is changed when you stop. To practise, set Agent pace to Slow in Settings.',
     ],
     examples: ['undo', 'undo 3 times', 'redo', 'show history', 'go back to step 2', 'stop'],
   },

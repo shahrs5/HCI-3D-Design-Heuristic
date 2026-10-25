@@ -179,7 +179,7 @@ export function SettingsPanel({ settings, set, voiceSupported, onReset }: {
         ['brief', 'Brief', 'what changed'], ['standard', 'Standard', 'what changed, the new overall size, and any assumptions'], ['detailed', 'Detailed', 'also a full description of every part'],
       ])}
       {radio('focusAfterReply', 'After the agent replies, keyboard focus goes to', [['input', 'The command box', 'keep typing'], ['reply', 'The new reply', 'read it with arrow keys']])}
-      {radio('pace', 'Agent pace', [['realistic', 'Realistic', 'about a second of working time you can stop'], ['instant', 'Instant']])}
+      {radio('pace', 'Agent pace', [['realistic', 'Realistic', 'about 2 seconds of working time'], ['slow', 'Slow', 'about 6 seconds, to practise stopping the agent'], ['instant', 'Instant']])}
       {check('soundCues', 'Sound cues when the agent starts, finishes, or hits a problem')}
       {check('speakReplies', 'Read replies aloud with the browser voice', 'For people not using a screen reader. Leave this off if you use one, or you will hear replies twice.')}
       {check('autoSendVoice', 'Send voice commands automatically', voiceSupported ? 'Turn off to check the words in the command box before pressing Enter.' : 'Voice input is not available in this browser.', !voiceSupported)}

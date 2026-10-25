@@ -16,6 +16,7 @@ test('voice command: interim text, final result is sent and marked as spoken', a
       abort() {}
     }
     (window as unknown as Record<string, unknown>).webkitSpeechRecognition = FakeRec;
+    (window as unknown as Record<string, unknown>).SpeechRecognition = FakeRec;
   });
   await page.goto('/');
   await page.evaluate(() => { localStorage.clear(); localStorage.setItem('hci3d-settings-v1', JSON.stringify({ pace: 'instant', soundCues: false })); });
@@ -39,7 +40,7 @@ test('voice command: interim text, final result is sent and marked as spoken', a
 test('voice unavailable: clear explanation, typing still works', async ({ page }) => {
   await page.addInitScript(() => { delete (window as unknown as Record<string, unknown>).webkitSpeechRecognition; delete (window as unknown as Record<string, unknown>).SpeechRecognition; });
   await page.goto('/');
-  await expect(page.getByText('Voice input is not available in this browser')).toBeVisible();
+  await expect(page.locator('#voice-unavailable')).toBeVisible();
   await page.getByRole('button', { name: 'Speak a command' }).click();
   await expect(page.locator('#alerts')).toContainText('Voice input is not available in this browser');
 });

@@ -125,13 +125,14 @@ export default function App() {
     const pace = settingsRef.current.pace;
     workingRef.current = true;
     cancelRef.current = false;
-    if (pace === 'realistic') {
+    if (pace !== 'instant') {
       announce('Working on it.');
       if (settingsRef.current.soundCues) cue('start');
     }
     for (let i = 0; i < labels.length; i++) {
       setStatus({ state: 'working', text: `Working: ${labels[i]} (${i + 1} of ${labels.length})` });
-      if (pace === 'realistic') await sleep(450);
+      const ms = pace === 'slow' ? 2000 : pace === 'realistic' ? 700 : 0;
+      for (let t = 0; t < ms && !cancelRef.current; t += 50) await sleep(50);
       if (cancelRef.current) break;
     }
     workingRef.current = false;

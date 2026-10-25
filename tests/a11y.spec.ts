@@ -75,7 +75,8 @@ test('stop with Escape cancels without changing the model (H3.4)', async ({ page
   await expect(page.locator('#announcer')).toHaveText('Stopped. I did not change the model.');
   await expect(page.locator('#model')).toContainText('The model is empty');
   await expect(page.locator('#history')).toContainText('You are at step 0 of 0');
-  // typed "stop" while working also works
+  // typed "stop" while working also works (slow pace leaves time to type)
+  await page.locator('#settings').getByLabel(/^Slow/).check();
   await say(page, 'add a box 40 by 30 by 10');
   await expect(page.locator('.status-line')).toContainText('Working:');
   await say(page, 'stop');
