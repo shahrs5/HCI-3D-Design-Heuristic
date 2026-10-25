@@ -163,7 +163,7 @@ test('queries: describe, list, size, where, relation, distance, check', () => {
   expect(s.say('describe').text).toContain('The model has 3 parts');
   expect(s.say('how tall is it').text).toBe('The whole model is 50 mm wide, 30 mm deep and 30 mm tall.');
   expect(s.say('how big is part 2').text).toContain('10 mm diameter, 20 mm tall');
-  expect(s.say('where is part 2').text).toContain('sits on top of Part 1, centred');
+  expect(s.say('where is part 2').text).toContain('is on top of Part 1, centred');
   expect(s.say('is part 2 touching part 1').text).toContain('Yes');
   expect(s.say('what is the distance between part 2 and part 3').text).toContain('gap');
   expect(s.say('list parts').details).toHaveLength(3);
@@ -186,6 +186,8 @@ test('unknown input gives suggestions; control intents parse', () => {
     ['repeat that', 'repeat']] as const)
     expect(parse(t).intent.type, t).toBe(type);
   expect((parse('download the code').intent as { format: string }).format).toBe('scad');
+  expect((parse('load the phone stand example').intent as { name: string }).name).toBe('phone stand');
+  expect((parse('show me an example of a keychain').intent as { name: string }).name).toBe('keychain');
 });
 
 test('OpenSCAD output and descriptions', () => {
@@ -200,4 +202,15 @@ test('OpenSCAD output and descriptions', () => {
   expect(d[0]).toContain('1 part and 1 hole');
   expect(problems(s.model)).toEqual([]);
   expect(modelBounds(s.model)).toMatchObject({ minX: -20, maxX: 20 });
+});
+
+test('covered hole and overlap are reported', () => {
+  const s = session();
+  s.say('load the phone stand example'); // not handled by agent; build manually
+  s.say('add a box 80 by 60 by 5 called base');
+  s.say('add a box 80 by 8 by 70 on top of the base at the back edge');
+  const r = s.say('add a hole 4 wide through the base at the back-right corner');
+  expect(r.warnings.join(' ')).toContain('Hole 1 is covered: Part 2 sits over its opening');
+  const r2 = s.say('add a box 10 by 10 by 10 on top of the base at the back-left corner');
+  expect(r2.notes.join(' ')).toContain('overlaps Part 2, so they merge into one solid');
 });

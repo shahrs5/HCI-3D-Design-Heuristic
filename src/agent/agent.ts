@@ -178,8 +178,10 @@ function finishChange(before: Model, after: Model, text: string, notes: string[]
   const sizeLine = !b1 ? 'The model is now empty.' : s0 === s1 ? `Overall size is unchanged: ${s1}.` : b0 ? `Overall size is now ${s1} (before: ${s0}).` : `Overall size: ${s1}.`;
   const p0 = new Set(problems(before).map((p) => p.text));
   const p1 = problems(after);
-  const warnings = p1.filter((p) => !p0.has(p.text)).map((p) => p.text);
-  const fixed = [...p0].filter((t) => !p1.some((p) => p.text === t));
+  const fresh = p1.filter((p) => !p0.has(p.text));
+  const warnings = fresh.filter((p) => p.severity === 'warning').map((p) => p.text);
+  for (const p of fresh.filter((x) => x.severity === 'info')) notes.push(p.text);
+  const fixed = problems(before).filter((p) => p.severity === 'warning' && !p1.some((q) => q.text === p.text)).map((p) => p.text);
   for (const f of fixed) notes.push(`Fixed: this resolved an earlier problem (${f.replace(/\.$/, '')}).`);
   const details = detail === 'detailed' ? describeModel(after, 'standard').slice(1) : [];
   return { kind: 'change', text: `${text} ${sizeLine}`, notes, warnings, details, model: after, touched, historyLabel };
@@ -321,7 +323,7 @@ export function run(intent: Intent, ctx: Ctx, parseNotes: string[] = []): Reply 
         const d = distanceBetween(a.part, b.part);
         const gapText = d.gap <= EPS ? 'They touch or overlap.' : `The gap between them is ${mm(d.gap)} mm${[d.gx && `${mm(d.gx)} left-right`, d.gy && `${mm(d.gy)} front-back`, d.gz && `${mm(d.gz)} up-down`].filter(Boolean).length > 1 ? ` (${[d.gx && `${mm(d.gx)} mm left to right`, d.gy && `${mm(d.gy)} mm front to back`, d.gz && `${mm(d.gz)} mm up and down`].filter(Boolean).join(', ')})` : ''}.`;
         const head = intent.type === 'relation'
-          ? (rel ? `Yes: ${labelWithName(a.part)} ${rel}.` : `${labelWithName(a.part)} does not touch ${labelWithName(b.part)}.`)
+          ? (rel ? `Yes: ${labelWithName(a.part)} is ${rel}.` : `No: ${labelWithName(a.part)} does not touch ${labelWithName(b.part)}.`)
           : gapText;
         const more = intent.type === 'relation' ? (rel ? [] : [gapText]) : [`Their centres are ${mm(d.centre)} mm apart.`];
         return info(head, more);

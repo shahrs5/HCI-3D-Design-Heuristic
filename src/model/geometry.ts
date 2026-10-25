@@ -93,16 +93,22 @@ export function stackAbove(m: Model, p: Part, seen = new Set<number>()): Part[] 
   return [p, ...resting(m, p).flatMap((q) => stackAbove(m, q, seen))];
 }
 
+/** Relation of a to b as a phrase that follows "is", e.g. "on top of Part 1, centred". */
 export function relationText(a: Part, b: Part): string | null {
   const r = relation(a, b);
   const bl = labelWithName(b);
   switch (r.kind) {
-    case 'on': return `sits on top of ${bl}, ${r.spot}`;
-    case 'under': return `is directly under ${bl}`;
-    case 'beside': return r.side === 'front' ? `is in front of ${bl}, touching it` : r.side === 'back' ? `is behind ${bl}, touching it` : `is to the ${r.side} of ${bl}, touching it`;
-    case 'overlaps': return `overlaps ${bl} (they merge into one solid)`;
+    case 'on': return `on top of ${bl}, ${r.spot}`;
+    case 'under': return `directly under ${bl}`;
+    case 'beside': return r.side === 'front' ? `in front of ${bl}, touching it` : r.side === 'back' ? `behind ${bl}, touching it` : `to the ${r.side} of ${bl}, touching it`;
+    case 'overlaps': return `overlapping ${bl}, so they merge into one solid`;
     default: return null;
   }
+}
+
+/** All relations of a solid to the others, as phrases that follow "is". */
+export function allRelations(p: Part, m: Model): string[] {
+  return solids(m).filter((q) => q.id !== p.id).map((q) => relationText(p, q)).filter((t): t is string => !!t && !t.startsWith('directly under'));
 }
 
 /** Where a hole is on its solid. */
@@ -139,16 +145,13 @@ export function partSizeSpoken(p: Part): string {
   return partSize(p);
 }
 
-/** Main relation of a solid, for tables and descriptions. */
+/** Where a solid is, as a phrase that follows "is": plate and/or relations to other parts. */
 export function supportText(p: Part, m: Model): string {
-  if (Math.abs(p.z) <= EPS) {
-    const others = solids(m).filter((q) => q.id !== p.id);
-    const side = others.map((q) => relationText(p, q)).find((t) => t && !t.startsWith('is directly under'));
-    return side ? `on the build plate; ${side}` : 'on the build plate';
-  }
-  const others = solids(m).filter((q) => q.id !== p.id);
-  const texts = others.map((q) => relationText(p, q)).filter(Boolean) as string[];
-  return texts.length ? texts[0] : `floating ${mm(p.z)} mm above the build plate`;
+  const rels = allRelations(p, m);
+  const onPlate = Math.abs(p.z) <= EPS;
+  if (onPlate) return ['on the build plate', ...rels].join('; ');
+  if (rels.length) return rels.join('; ');
+  return `floating ${mm(p.z)} mm above the build plate`;
 }
 
 export function distanceBetween(a: Part, b: Part) {
@@ -190,10 +193,15 @@ export function problems(m: Model): Problem[] {
     if (host) {
       const B = bounds(host);
       const wall = Math.min(H.minX - B.minX, B.maxX - H.maxX, H.minY - B.minY, B.maxY - H.maxY);
+      const cover = S.find((q) => q.id !== host.id && relation(q, host).kind === 'on' && (() => { const f = footprintOverlap(H, bounds(q)); return f.x > EPS && f.y > EPS; })());
+      if (h.z + h.sz <= host.z + host.sz + 0.6 && cover) out.push({ severity: 'warning', partId: h.id, text: `${label(h)} is covered: ${labelWithName(cover)} sits over its opening on top of ${labelWithName(host)}.` });
       if (wall < 0) out.push({ severity: 'warning', partId: h.id, text: `${label(h)} breaks out through the side of ${labelWithName(host)}.` });
       else if (wall < 1.2) out.push({ severity: 'warning', partId: h.id, text: `The wall next to ${label(h)} is only ${mm(wall)} mm thick; under 1.2 mm may not print well.` });
     }
   }
+  for (const a of S) for (const b of S)
+    if (a.id < b.id && relation(a, b).kind === 'overlaps')
+      out.push({ severity: 'info', partId: b.id, text: `${labelWithName(b)} overlaps ${labelWithName(a)}, so they merge into one solid.` });
   // Separate pieces (connected components of touching solids)
   if (S.length > 1) {
     const parent = new Map(S.map((s) => [s.id, s.id]));

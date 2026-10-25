@@ -332,7 +332,7 @@ export function parse(raw: string, names: string[] = []): Parsed {
   if (/^(?:repeat|say (?:that|it) again|what did you say|pardon|come again|again)\b/.test(s)) return done({ type: 'repeat' });
   if (/\b(?:start over|start again|new model|new design|clear (?:everything|all|the model|the design)|reset (?:the )?(?:model|design|everything)|delete everything|remove everything|blank model)\b/.test(s))
     return done({ type: 'new' });
-  if ((m = /\b(?:load|open|show me|try|use)?\s*(?:an? |the )?example\b(.*)$/.exec(s))) return done({ type: 'example', name: m[1].replace(/^\s*(?:of |called |named )?(?:a |an |the )?/, '').trim() });
+  if (/\bexamples?\b/.test(s)) return done({ type: 'example', name: s.replace(/\b(?:load|open|show(?: me)?|try|use|give me|an?|the|examples?|of|called|named|please|model)\b/g, ' ').replace(/\s+/g, ' ').trim() });
   if (/\b(?:listen|play (?:the )?(?:sound|profile|audio|shape)|sonif|hear (?:the )?(?:shape|model|profile)|audio (?:profile|preview))/.test(s)) return done({ type: 'listen' });
   if ((m = /\b(?:export|download|save)\b(.*)$/.exec(s))) {
     const rest = m[1];
