@@ -35,6 +35,16 @@ Download after each session: clearing the browser's data deletes the results.
 
 Voice answers work in **Chrome, Edge and Safari** (not Firefox). Use headphones so the microphone doesn't pick up the screen reader.
 
+## Google Form version
+
+If you'd rather use Google Forms, `google-form/create-form.gs` builds the same questionnaire in your Google account:
+1. Go to https://script.google.com and choose **New project**.
+2. Paste in the whole file and save.
+3. Choose `createForm` and press **Run**, allowing the permissions it asks for.
+4. The execution log shows three links: the one to send participants, the one to edit the form, and the responses spreadsheet.
+
+The Google Form has no voice: it relies on the participant's own screen reader. It has one statement per question (no grids, which are hard to use with screen readers), one page per category, and a linked Google Sheet for results.
+
 ## Change the statements
 
 Edit `src/checklist.json` (`{ id, heuristic, title, items: [{ id, text }] }[]`), then `npm run deploy`.
